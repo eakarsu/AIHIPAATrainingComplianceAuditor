@@ -400,6 +400,149 @@ const AI_CONFIG = {
     ],
     fn: 'validatePolicy',
   },
+
+  // ── DB-context refactored tools (audit gap #1) ───────────────────────────
+  'analyze-employee-deep': {
+    title: 'Employee Deep Analysis (DB-backed)',
+    description: 'Full DB-context HIPAA analysis using employee training records, sanctions, access permissions.',
+    fields: [
+      { name: 'employeeId', label: 'Employee', type: 'resource_select', resource: 'employees', displayFn: (i) => `${i.first_name} ${i.last_name} (${i.job_title})`, valueKey: 'id' },
+    ],
+    samples: [
+      { label: 'Pull employee #1', data: { employeeId: 1 } },
+      { label: 'Pull employee #2', data: { employeeId: 2 } },
+    ],
+    fn: 'analyzeEmployeeDeep',
+  },
+  'analyze-department-deep': {
+    title: 'Department Deep Analysis (DB-backed)',
+    description: 'Live department compliance analysis using actual employee/training counts and risk register.',
+    fields: [
+      { name: 'departmentId', label: 'Department', type: 'resource_select', resource: 'departments', displayFn: (i) => i.name, valueKey: 'id' },
+    ],
+    samples: [
+      { label: 'Pull department #1', data: { departmentId: 1 } },
+    ],
+    fn: 'analyzeDepartmentDeep',
+  },
+  // ── Feature #2: Auto-enroll training ─────────────────────────────────────
+  'auto-enroll-training': {
+    title: 'AI Training Auto-Enroller',
+    description: 'AI selects appropriate courses for an employee based on role + previous completions, then creates draft training records.',
+    fields: [
+      { name: 'employeeId', label: 'Employee', type: 'resource_select', resource: 'employees', displayFn: (i) => `${i.first_name} ${i.last_name} (${i.job_title})`, valueKey: 'id' },
+      { name: 'dryRun', label: 'Dry Run (preview only)', type: 'select', options: ['true', 'false'] },
+    ],
+    samples: [
+      { label: 'Preview for Employee #1', data: { employeeId: 1, dryRun: 'true' } },
+      { label: 'Create for Employee #2', data: { employeeId: 2, dryRun: 'false' } },
+    ],
+    fn: 'autoEnrollTraining',
+  },
+  // ── Feature #3: Access anomaly detector ──────────────────────────────────
+  'detect-access-anomalies': {
+    title: 'PHI Access Anomaly Detector',
+    description: 'AI scans recent audit logs for suspicious patterns. Optionally auto-creates an incident report.',
+    fields: [
+      { name: 'hours', label: 'Hours to Analyze', type: 'number', placeholder: '24' },
+      { name: 'autoCreateIncident', label: 'Auto-create incident if anomaly?', type: 'select', options: ['false', 'true'] },
+    ],
+    samples: [
+      { label: 'Last 24 hours', data: { hours: 24, autoCreateIncident: 'false' } },
+      { label: 'Last 7 days w/ auto-incident', data: { hours: 168, autoCreateIncident: 'true' } },
+    ],
+    fn: 'detectAccessAnomalies',
+  },
+  // ── Feature #4: BAA renewal drafter ──────────────────────────────────────
+  'draft-baa-renewal': {
+    title: 'BAA Renewal Drafter',
+    description: 'AI drafts a complete renewal BAA with all required §164.504(e) clauses.',
+    fields: [
+      { name: 'baaId', label: 'BAA', type: 'resource_select', resource: 'baas', displayFn: (i) => `${i.associate_name || i.name} (expires ${i.expiration_date})`, valueKey: 'id' },
+    ],
+    samples: [
+      { label: 'Renew BAA #1', data: { baaId: 1 } },
+    ],
+    fn: 'draftBaaRenewal',
+  },
+  // ── Feature #5: Quiz remediation ─────────────────────────────────────────
+  'generate-remediation': {
+    title: 'AI Remediation Micro-Course',
+    description: 'Builds a personalized micro-course from an employee\'s quiz mistakes.',
+    fields: [
+      { name: 'employeeId', label: 'Employee', type: 'resource_select', resource: 'employees', displayFn: (i) => `${i.first_name} ${i.last_name}`, valueKey: 'id' },
+      { name: 'courseId', label: 'Course (optional)', type: 'resource_select', resource: 'courses', displayFn: (i) => i.title, valueKey: 'id' },
+    ],
+    samples: [
+      { label: 'Remediation for #1', data: { employeeId: 1 } },
+    ],
+    fn: 'generateRemediation',
+  },
+  'vendor-security-assessment': {
+    title: 'Vendor Security Assessment',
+    description: 'Third-party / Business Associate security assessment with HIPAA-aligned scoring rubric.',
+    fields: [
+      { name: 'vendor_name', label: 'Vendor Name', placeholder: 'e.g. CloudHealth Analytics Inc.' },
+      { name: 'services_provided', label: 'Services Provided', type: 'textarea', placeholder: 'Describe the services this vendor provides...' },
+      { name: 'data_types', label: 'Data Types Accessed', placeholder: 'e.g. PHI, billing records, claims data' },
+      { name: 'integration_method', label: 'Integration Method', placeholder: 'e.g. API, SFTP, manual upload' },
+      { name: 'security_documentation', label: 'Security Documentation Provided', type: 'textarea', placeholder: 'List SOC 2 reports, HITRUST cert, ISO 27001, pen test results, etc.' },
+    ],
+    samples: [
+      { label: 'Cloud EHR Vendor', data: { vendor_name: 'MedCloud EHR Provider', services_provided: 'Cloud-hosted electronic health records for 50,000 patients', data_types: 'Full PHI, medical records, lab results, prescriptions, billing', integration_method: 'HTTPS REST API + nightly SFTP exports', security_documentation: 'SOC 2 Type II (current), HITRUST CSF Certified, annual third-party pen test, BAA in place since 2022' } },
+      { label: 'Marketing SaaS', data: { vendor_name: 'PatientReach Marketing', services_provided: 'Patient outreach email and SMS campaigns', data_types: 'Patient names, contact info, appointment dates', integration_method: 'API + CSV upload', security_documentation: 'SOC 2 Type I only, no HITRUST, no pen test, no BAA yet' } },
+    ],
+    fn: 'vendorSecurityAssessment',
+  },
+  'breach-simulation': {
+    title: 'Breach Tabletop Simulation',
+    description: 'Generate a tabletop breach exercise with injects, decision points, scoring rubric, and post-exercise actions.',
+    fields: [
+      { name: 'scenario_type', label: 'Scenario Type', placeholder: 'e.g. ransomware, phishing breach, insider data theft' },
+      { name: 'duration_minutes', label: 'Duration (minutes)', type: 'number', placeholder: '60' },
+      { name: 'participant_roles', label: 'Participant Roles', type: 'textarea', placeholder: 'List roles, e.g. CISO, Privacy Officer, Legal Counsel, IT Director, Communications Lead' },
+      { name: 'organization_context', label: 'Organization Context', type: 'textarea', placeholder: 'Describe org size, systems, current incident response posture' },
+    ],
+    samples: [
+      { label: 'Ransomware - Hospital', data: { scenario_type: 'Ransomware encrypting EHR and PACS', duration_minutes: 90, participant_roles: 'CISO, Privacy Officer, CIO, Chief Medical Officer, General Counsel, Communications Director', organization_context: '500-bed hospital, MedCloud EHR, 2000 employees, prior incident in 2023, IR plan last tested 18 months ago' } },
+      { label: 'Insider Threat', data: { scenario_type: 'Insider unauthorized access to celebrity patient records', duration_minutes: 60, participant_roles: 'Privacy Officer, HR Director, Legal Counsel, Department Manager', organization_context: 'Large clinic network, audit logging in place, recent media interest in a high-profile patient' } },
+    ],
+    fn: 'breachSimulation',
+  },
+  'policy-gap-analysis': {
+    title: 'Policy Gap Analysis (Pass 5)',
+    description: 'Compare a pasted policy document against HIPAA Privacy/Security/Breach Notification rules and produce a redline-style gap report.',
+    fields: [
+      { name: 'policyTitle', label: 'Policy Title', placeholder: 'e.g. Mobile Device Use Policy' },
+      { name: 'hipaaScope', label: 'HIPAA Scope (optional)', placeholder: 'Privacy + Security + Breach Notification' },
+      { name: 'policyText', label: 'Policy Text', type: 'textarea', placeholder: 'Paste the full policy document here...' },
+    ],
+    samples: [],
+    fn: 'policyGapAnalysis',
+  },
+  'adaptive-training-path': {
+    title: 'Adaptive Training Path (Pass 5)',
+    description: 'Generate a role/risk-aware adaptive training path with module sequencing.',
+    fields: [
+      { name: 'employeeId', label: 'Employee ID (optional)', type: 'number', placeholder: 'leave blank for free-form' },
+      { name: 'role', label: 'Role', placeholder: 'e.g. Nurse, IT Admin, Front Desk' },
+      { name: 'department', label: 'Department', placeholder: 'e.g. Cardiology' },
+      { name: 'riskProfile', label: 'Risk Profile', placeholder: 'standard | elevated | high' },
+      { name: 'recentQuizScores', label: 'Recent Quiz Scores', type: 'textarea', placeholder: 'e.g. Privacy Rule: 72%, Security Rule: 88%' },
+      { name: 'knowledgeGaps', label: 'Known Knowledge Gaps', type: 'textarea', placeholder: 'e.g. minimum-necessary standard, mobile device policy' },
+    ],
+    samples: [],
+    fn: 'adaptiveTrainingPath',
+  },
+  'continuous-compliance-narrative': {
+    title: 'Continuous Compliance Narrative (Pass 5)',
+    description: 'Synthesize the org\'s recent state into a compliance-program narrative report.',
+    fields: [
+      { name: 'window_days', label: 'Window (days)', type: 'number', placeholder: '30' },
+    ],
+    samples: [],
+    fn: 'continuousComplianceNarrative',
+  },
 };
 
 export default AI_CONFIG;

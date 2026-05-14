@@ -19,8 +19,34 @@ import {
   analyzePhiRisk, reviewAccessControl, recommendSanction,
   prioritizeDeadlines, analyzeAuditLogs, monitorBaa,
   investigateIncident, planRiskMitigation, validatePolicy,
+  // New: DB-context AI tools and proposed feature endpoints
+  analyzeEmployeeDeep, analyzeDepartmentDeep, autoEnrollTraining,
+  detectAccessAnomalies, fetchBaaRenewals, draftBaaRenewal,
+  logQuizAttempt, generateRemediation, fetchQuizAnalytics,
+  fetchReminders, acknowledgeReminder, runReminderJob,
+  fetchAiResults,
+  vendorSecurityAssessment, breachSimulation,
+  // Apply pass 5
+  policyGapAnalysis, adaptiveTrainingPath, continuousComplianceNarrative,
 } from './services/api.js';
 import AI_CONFIG from './aiConfig.js';
+
+// === Batch 04 Gaps & Frontend Mounts ===
+import CfAgenticComplianceAuditorContinuously from './pages/CfAgenticComplianceAuditorContinuously';
+import CfBreachSimulationGamifiedExercisesSco from './pages/CfBreachSimulationGamifiedExercisesSco';
+import CfAdaptiveWorkforceTrainingWithRoleBa from './pages/CfAdaptiveWorkforceTrainingWithRoleBa';
+import CfRealTimeAccessMonitoringFlaggingBul from './pages/CfRealTimeAccessMonitoringFlaggingBul';
+import CfVendorRiskManagementIngestingSoc2 from './pages/CfVendorRiskManagementIngestingSoc2';
+import CfOcrPolicyAutomationExtractingRequire from './pages/CfOcrPolicyAutomationExtractingRequire';
+import GapLimitedVendorSecurityAssessmentDepth from './pages/GapLimitedVendorSecurityAssessmentDepth';
+import GapNoBreachSimulationTabletopEndpoint from './pages/GapNoBreachSimulationTabletopEndpoint';
+import GapNoInsiderThreatBehaviorBaselineDrif from './pages/GapNoInsiderThreatBehaviorBaselineDrif';
+import GapNoUserFacingDashboardBackendApi from './pages/GapNoUserFacingDashboardBackendApi';
+import GapNoRealTimePhiStreamingMonitor from './pages/GapNoRealTimePhiStreamingMonitor';
+import GapNoEhrSystemIntegration from './pages/GapNoEhrSystemIntegration';
+import GapNoExternalRegulatorCommunicationWork from './pages/GapNoExternalRegulatorCommunicationWork';
+import GapNoWebhookSurfaceForSiemIntegration from './pages/GapNoWebhookSurfaceForSiemIntegration';
+import GapNoMultiTenantCoveredEntityIsolation from './pages/GapNoMultiTenantCoveredEntityIsolation';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AUTH CONTEXT
@@ -124,6 +150,22 @@ const NAV_SECTIONS = [
     { label: 'Document Review', path: '/ai/review-document', icon: Brain },
     { label: 'Access Review', path: '/ai/review-access-control', icon: Brain },
     { label: 'Training Records', path: '/ai/analyze-training-records', icon: Brain },
+  ]},
+  { label: 'AI v2 (DB-backed)', items: [
+    { label: 'Employee Deep Analysis', path: '/ai/analyze-employee-deep', icon: Sparkles },
+    { label: 'Department Deep Analysis', path: '/ai/analyze-department-deep', icon: Sparkles },
+    { label: 'Auto-Enroll Training', path: '/ai/auto-enroll-training', icon: Sparkles },
+    { label: 'Access Anomaly Detector', path: '/ai/detect-access-anomalies', icon: Sparkles },
+    { label: 'BAA Renewal Drafter', path: '/ai/draft-baa-renewal', icon: Sparkles },
+    { label: 'Quiz Remediation', path: '/ai/generate-remediation', icon: Sparkles },
+    { label: 'Vendor Security Assessment', path: '/ai/vendor-security-assessment', icon: Sparkles },
+    { label: 'Breach Tabletop Simulation', path: '/ai/breach-simulation', icon: Sparkles },
+  ]},
+  { label: 'Operations', items: [
+    { label: 'BAA Renewals', path: '/baa-renewals', icon: Calendar },
+    { label: 'Reminders', path: '/reminders', icon: AlertTriangle },
+    { label: 'Quiz Analytics', path: '/quiz-analytics', icon: Activity },
+    { label: 'AI History', path: '/ai-history', icon: FileText },
   ]},
 ];
 
@@ -804,7 +846,7 @@ function AiSlidePanel({ aiPath, initialData, onClose }) {
               <div key={field.name}>
                 <label className="block text-xs font-medium text-slate-400 mb-1">{field.label}</label>
                 {field.type === 'resource_select' ? (
-                  <ResourceSelect resource={field.resource} displayFn={field.displayFn} value={form[field.name] ?? ''} onChange={v => setForm(p => ({ ...p, [field.name]: v }))} placeholder={field.placeholder} />
+                  <ResourceSelect resource={field.resource} displayFn={field.displayFn} valueKey={field.valueKey} value={form[field.name] ?? ''} onChange={v => setForm(p => ({ ...p, [field.name]: v }))} placeholder={field.placeholder} />
                 ) : field.type === 'textarea' ? (
                   <textarea rows={3} value={form[field.name] ?? ''} onChange={e => setForm(p => ({ ...p, [field.name]: e.target.value }))} placeholder={field.placeholder}
                     className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-y" />
@@ -1079,20 +1121,28 @@ const AI_FUNCTIONS = {
   analyzePhiRisk, reviewAccessControl, recommendSanction,
   prioritizeDeadlines, analyzeAuditLogs, monitorBaa,
   investigateIncident, planRiskMitigation, validatePolicy,
+  // DB-context refactored
+  analyzeEmployeeDeep, analyzeDepartmentDeep, autoEnrollTraining,
+  detectAccessAnomalies, draftBaaRenewal, generateRemediation,
+  // Audit-added
+  vendorSecurityAssessment, breachSimulation,
+  // Apply pass 5
+  policyGapAnalysis, adaptiveTrainingPath, continuousComplianceNarrative,
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
    RESOURCE SELECT - dropdown that loads data from backend
    ═══════════════════════════════════════════════════════════════════════ */
 
-function ResourceSelect({ resource, displayFn, value, onChange, placeholder }) {
+function ResourceSelect({ resource, displayFn, valueKey, value, onChange, placeholder }) {
   const [options, setOptions] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!loaded) {
       fetchAll(resource).then(data => {
-        const items = Array.isArray(data) ? data : [];
+        // some endpoints return {data: [...]}, some return [...]
+        const items = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
         setOptions(items);
       }).catch(() => setOptions([]));
       setLoaded(true);
@@ -1100,11 +1150,16 @@ function ResourceSelect({ resource, displayFn, value, onChange, placeholder }) {
   }, [resource, loaded]);
 
   return (
-    <select value={value || ''} onChange={e => onChange(e.target.value)}
+    <select value={value ?? ''} onChange={e => {
+      const v = e.target.value;
+      // If a valueKey is set, coerce numeric IDs back to numbers
+      if (valueKey && v !== '' && !isNaN(Number(v))) onChange(Number(v));
+      else onChange(v);
+    }}
       className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
       <option value="">{placeholder || `Select from ${resource}...`}</option>
       {options.map(item => (
-        <option key={item.id} value={displayFn(item)}>{displayFn(item)}</option>
+        <option key={item.id} value={valueKey ? item[valueKey] : displayFn(item)}>{displayFn(item)}</option>
       ))}
     </select>
   );
@@ -1203,7 +1258,7 @@ function AIFeaturePage({ feature }) {
               <div key={field.name}>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">{field.label}</label>
                 {field.type === 'resource_select' ? (
-                  <ResourceSelect resource={field.resource} displayFn={field.displayFn} value={form[field.name] ?? ''} onChange={v => setForm(p => ({ ...p, [field.name]: v }))} placeholder={field.placeholder} />
+                  <ResourceSelect resource={field.resource} displayFn={field.displayFn} valueKey={field.valueKey} value={form[field.name] ?? ''} onChange={v => setForm(p => ({ ...p, [field.name]: v }))} placeholder={field.placeholder} />
                 ) : field.type === 'textarea' ? (
                   <textarea rows={4} value={form[field.name] ?? ''} onChange={e => setForm(p => ({ ...p, [field.name]: e.target.value }))} placeholder={field.placeholder}
                     className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-y" />
@@ -1254,6 +1309,260 @@ function AIFeaturePage({ feature }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEW PAGES (BAA renewals, Reminders, Quiz Analytics, AI History)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function BaaRenewalsPage() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [draftFor, setDraftFor] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [drafting, setDrafting] = useState(false);
+
+  useEffect(() => {
+    fetchBaaRenewals().then(d => setItems(d.data || [])).catch(e => toast.error(e.message)).finally(() => setLoading(false));
+  }, []);
+
+  async function handleDraft(baaId) {
+    setDraftFor(baaId); setDrafting(true); setDraft(null);
+    try {
+      const r = await draftBaaRenewal({ baaId });
+      setDraft(r.draft);
+    } catch (e) { toast.error(e.message); }
+    finally { setDrafting(false); }
+  }
+
+  const statusColor = (s) => ({
+    expired: 'bg-red-500/10 text-red-400 border-red-500/40',
+    urgent: 'bg-orange-500/10 text-orange-400 border-orange-500/40',
+    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/40',
+    upcoming: 'bg-sky-500/10 text-sky-400 border-sky-500/40',
+    ok: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40',
+  }[s] || 'bg-slate-500/10 text-slate-400 border-slate-500/40');
+
+  return (
+    <div className="p-6 animate-fade-in">
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-white">BAA Renewals</h2>
+        <p className="text-sm text-slate-400 mt-1">Business Associate Agreements expiring within 90 days</p>
+      </div>
+      {loading ? <div className="text-slate-400">Loading…</div> : items.length === 0 ? (
+        <div className="text-slate-500 py-12 text-center">No BAAs require renewal in the next 90 days.</div>
+      ) : (
+        <div className="grid lg:grid-cols-2 gap-4">
+          {items.map(b => (
+            <div key={b.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="text-base font-semibold text-white">{b.associate_name || b.name}</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">{b.services_provided || '—'}</p>
+                </div>
+                <span className={`text-xs font-medium border rounded-full px-2 py-0.5 ${statusColor(b.renewal_status)}`}>{b.renewal_status}</span>
+              </div>
+              <div className="text-xs text-slate-400 space-y-0.5 mb-3">
+                <div>Expires: <span className="text-slate-200">{b.expiration_date}</span></div>
+                <div>Days until expiry: <span className="text-slate-200">{b.days_until_expiry}</span></div>
+              </div>
+              <button onClick={() => handleDraft(b.id)} disabled={drafting && draftFor === b.id}
+                className="flex items-center gap-1.5 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-600/40 text-violet-400 text-xs font-medium px-3 py-1.5 rounded-lg">
+                <Brain size={13} /> {drafting && draftFor === b.id ? 'Drafting…' : 'Draft AI Renewal'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {draft && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDraft(null)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white">AI-Drafted Renewal BAA</h3>
+              <button onClick={() => setDraft(null)} className="text-slate-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <pre className="text-xs text-slate-200 whitespace-pre-wrap font-mono">{draft}</pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RemindersPage() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchReminders().then(d => setItems(d.data || [])).catch(e => toast.error(e.message)).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function ack(id) {
+    try { await acknowledgeReminder(id); load(); toast.success('Acknowledged'); }
+    catch (e) { toast.error(e.message); }
+  }
+
+  async function runJob() {
+    setRunning(true);
+    try { const r = await runReminderJob(); toast.success(`Scan: ${r.overdue_deadlines} overdue, ${r.expiring_certifications} certs, ${r.expiring_baas} BAAs`); load(); }
+    catch (e) { toast.error(e.message); } finally { setRunning(false); }
+  }
+
+  const sevColor = (s) => ({ high: 'bg-red-500/10 text-red-400 border-red-500/40', critical: 'bg-red-700/20 text-red-300 border-red-700/50', medium: 'bg-amber-500/10 text-amber-400 border-amber-500/40', low: 'bg-sky-500/10 text-sky-400 border-sky-500/40' }[s] || 'bg-slate-500/10 text-slate-400 border-slate-500/40');
+
+  return (
+    <div className="p-6 animate-fade-in">
+      <div className="mb-4 flex justify-between items-start">
+        <div>
+          <h2 className="text-xl font-bold text-white">Reminders</h2>
+          <p className="text-sm text-slate-400 mt-1">Auto-scanned alerts for deadlines, certifications, and BAAs</p>
+        </div>
+        <button onClick={runJob} disabled={running} className="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium px-3 py-2 rounded-lg">
+          <Activity size={13} /> {running ? 'Scanning…' : 'Run Scan Now'}
+        </button>
+      </div>
+      {loading ? <div className="text-slate-400">Loading…</div> : items.length === 0 ? (
+        <div className="text-slate-500 py-12 text-center">All clear — no active reminders.</div>
+      ) : (
+        <div className="space-y-2">
+          {items.map(r => (
+            <div key={r.id} className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <span className={`text-xs font-medium border rounded-full px-2 py-0.5 ${sevColor(r.severity)}`}>{r.severity}</span>
+                <span className="text-xs text-slate-500 uppercase">{r.type}</span>
+                <span className="text-sm text-slate-200 truncate">{r.message}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">{new Date(r.created_at).toLocaleDateString()}</span>
+                <button onClick={() => ack(r.id)} className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded-md">Acknowledge</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuizAnalyticsPage() {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { fetchQuizAnalytics().then(setStats).catch(e => toast.error(e.message)).finally(() => setLoading(false)); }, []);
+
+  return (
+    <div className="p-6 animate-fade-in">
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-white">Quiz Analytics</h2>
+        <p className="text-sm text-slate-400 mt-1">Pass rates by topic — drives the AI remediation generator</p>
+      </div>
+      {loading ? <div className="text-slate-400">Loading…</div> : !stats ? <div className="text-slate-400">No data</div> : (
+        <>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wider">Total Attempts</p>
+              <p className="text-3xl font-bold text-white">{stats.overall.attempts}</p>
+            </div>
+            <div className="bg-slate-800 border border-emerald-700/40 rounded-xl p-4">
+              <p className="text-xs text-emerald-400 uppercase tracking-wider">Correct</p>
+              <p className="text-3xl font-bold text-white">{stats.overall.correct}</p>
+            </div>
+            <div className="bg-slate-800 border border-sky-700/40 rounded-xl p-4">
+              <p className="text-xs text-sky-400 uppercase tracking-wider">Pass Rate</p>
+              <p className="text-3xl font-bold text-white">{stats.overall.pass_rate}%</p>
+            </div>
+          </div>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="p-3 border-b border-slate-700 text-sm font-semibold text-slate-300">By Topic</div>
+            <div className="divide-y divide-slate-700">
+              {(stats.by_topic || []).length === 0 ? (
+                <div className="p-6 text-center text-slate-500 text-sm">No quiz attempts logged yet. Use POST /api/ai/log-quiz-attempt to record results.</div>
+              ) : stats.by_topic.map(t => (
+                <div key={t.topic} className="px-4 py-2 flex items-center justify-between text-sm">
+                  <span className="text-slate-200">{t.topic || '—'}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500">{t.correct}/{t.attempts}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${parseFloat(t.pass_rate) >= 80 ? 'bg-emerald-500/10 text-emerald-400' : parseFloat(t.pass_rate) >= 60 ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'}`}>{t.pass_rate}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AiHistoryPage() {
+  const [items, setItems] = useState([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchAiResults(page).then(d => { setItems(d.data || []); setTotal(d.total || 0); }).catch(e => toast.error(e.message)).finally(() => setLoading(false));
+  }, [page]);
+
+  const totalPages = Math.ceil(total / 20);
+
+  return (
+    <div className="p-6 animate-fade-in">
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-white">AI History</h2>
+        <p className="text-sm text-slate-400 mt-1">All AI tool invocations for your account ({total} total)</p>
+      </div>
+      {loading ? <div className="text-slate-400">Loading…</div> : (
+        <>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-900 border-b border-slate-700">
+                <tr><th className="text-left px-3 py-2 text-xs font-medium text-slate-400 uppercase tracking-wider">Tool</th><th className="text-left px-3 py-2 text-xs font-medium text-slate-400 uppercase tracking-wider">When</th><th></th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {items.map(r => (
+                  <tr key={r.id} className="hover:bg-slate-700/30">
+                    <td className="px-3 py-2 text-slate-200">{r.tool_name}</td>
+                    <td className="px-3 py-2 text-slate-400 text-xs">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right"><button onClick={() => setSelected(r)} className="text-xs text-sky-400 hover:text-sky-300">View</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 flex justify-between items-center text-xs text-slate-500">
+            <span>Page {page} / {totalPages || 1}</span>
+            <div className="flex gap-2">
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 bg-slate-800 border border-slate-700 rounded disabled:opacity-50">Prev</button>
+              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1 bg-slate-800 border border-slate-700 rounded disabled:opacity-50">Next</button>
+            </div>
+          </div>
+        </>
+      )}
+      {selected && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white">{selected.tool_name}</h3>
+                <p className="text-xs text-slate-400">{new Date(selected.created_at).toLocaleString()}</p>
+              </div>
+              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <p className="text-xs font-medium text-slate-400 uppercase mb-1">Input</p>
+            <pre className="text-xs text-slate-300 bg-slate-900 p-3 rounded mb-3 overflow-x-auto">{JSON.stringify(selected.input_snapshot, null, 2)}</pre>
+            <p className="text-xs font-medium text-slate-400 uppercase mb-1">Result</p>
+            <pre className="text-xs text-slate-200 bg-slate-900 p-3 rounded whitespace-pre-wrap overflow-x-auto">{selected.result}</pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1329,6 +1638,27 @@ export default function App() {
           } />
         ))}
         <Route path="/ai/:feature" element={<ProtectedRoute><AIFeaturePageWrapper /></ProtectedRoute>} />
+        <Route path="/baa-renewals" element={<ProtectedRoute><AppLayout><BaaRenewalsPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/reminders" element={<ProtectedRoute><AppLayout><RemindersPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/quiz-analytics" element={<ProtectedRoute><AppLayout><QuizAnalyticsPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/ai-history" element={<ProtectedRoute><AppLayout><AiHistoryPage /></AppLayout></ProtectedRoute>} />
+          {/* // === Batch 04 Gaps & Frontend Mounts === */}
+          <Route path="/cf-agentic-compliance-auditor-continuously-" element={<CfAgenticComplianceAuditorContinuously />} />
+          <Route path="/cf-breach-simulation-gamified-exercises-sco" element={<CfBreachSimulationGamifiedExercisesSco />} />
+          <Route path="/cf-adaptive-workforce-training-with-role-ba" element={<CfAdaptiveWorkforceTrainingWithRoleBa />} />
+          <Route path="/cf-real-time-access-monitoring-flagging-bul" element={<CfRealTimeAccessMonitoringFlaggingBul />} />
+          <Route path="/cf-vendor-risk-management-ingesting-soc-2" element={<CfVendorRiskManagementIngestingSoc2 />} />
+          <Route path="/cf-ocr-policy-automation-extracting-require" element={<CfOcrPolicyAutomationExtractingRequire />} />
+          <Route path="/gap-limited-vendor-security-assessment-depth" element={<GapLimitedVendorSecurityAssessmentDepth />} />
+          <Route path="/gap-no-breach-simulation-tabletop-endpoint" element={<GapNoBreachSimulationTabletopEndpoint />} />
+          <Route path="/gap-no-insider-threat-behavior-baseline-drif" element={<GapNoInsiderThreatBehaviorBaselineDrif />} />
+          <Route path="/gap-no-user-facing-dashboard-backend-api" element={<GapNoUserFacingDashboardBackendApi />} />
+          <Route path="/gap-no-real-time-phi-streaming-monitor" element={<GapNoRealTimePhiStreamingMonitor />} />
+          <Route path="/gap-no-ehr-system-integration" element={<GapNoEhrSystemIntegration />} />
+          <Route path="/gap-no-external-regulator-communication-work" element={<GapNoExternalRegulatorCommunicationWork />} />
+          <Route path="/gap-no-webhook-surface-for-siem-integration" element={<GapNoWebhookSurfaceForSiemIntegration />} />
+          <Route path="/gap-no-multi-tenant-covered-entity-isolation" element={<GapNoMultiTenantCoveredEntityIsolation />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

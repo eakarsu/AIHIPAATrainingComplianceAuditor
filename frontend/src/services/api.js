@@ -96,3 +96,39 @@ export const monitorBaa = (d) => aiPost('monitor-baa', d);
 export const investigateIncident = (d) => aiPost('investigate-incident', d);
 export const planRiskMitigation = (d) => aiPost('plan-risk-mitigation', d);
 export const validatePolicy = (d) => aiPost('validate-policy', d);
+
+// New: DB-context AI tools (refactored from string-based originals)
+export const analyzeEmployeeDeep = (d) => aiPost('analyze-employee-deep', d);
+export const analyzeDepartmentDeep = (d) => aiPost('analyze-department-deep', d);
+
+// Proposed Feature #2: Auto-enroll training
+export const autoEnrollTraining = (d) => aiPost('auto-enroll-training', d);
+
+// Proposed Feature #3: Access anomaly detection
+export const detectAccessAnomalies = (d) => aiPost('detect-access-anomalies', d);
+
+// Proposed Feature #4: BAA renewals
+export const fetchBaaRenewals = () => apiRequest('/ai/baa-renewals');
+export const draftBaaRenewal = (d) => aiPost('draft-baa-renewal', d);
+
+// Proposed Feature #5: Quiz attempts + remediation
+export const logQuizAttempt = (d) => aiPost('log-quiz-attempt', d);
+export const generateRemediation = (d) => aiPost('generate-remediation', d);
+export const fetchQuizAnalytics = (employeeId) => apiRequest(`/ai/quiz-analytics${employeeId ? `?employeeId=${employeeId}` : ''}`);
+
+// Reminders
+export const fetchReminders = (page = 1, limit = 20) => apiRequest(`/reminders?page=${page}&limit=${limit}`);
+export const acknowledgeReminder = (id) => apiRequest(`/reminders/${id}/acknowledge`, { method: 'POST' });
+export const runReminderJob = () => aiPost('run-reminder-job', {});
+
+// AI history
+export const fetchAiResults = (page = 1, limit = 20) => apiRequest(`/ai/results?page=${page}&limit=${limit}`);
+
+// Audit-added: Vendor Security Assessment & Breach Simulation
+export const vendorSecurityAssessment = (d) => aiPost('vendor-security-assessment', d);
+export const breachSimulation = (d) => aiPost('breach-simulation', d);
+
+// Apply pass 5 backlog
+export const policyGapAnalysis = (d) => aiPost('policy-gap-analysis', d);
+export const adaptiveTrainingPath = (d) => aiPost('adaptive-training-path', d);
+export const continuousComplianceNarrative = (d) => aiPost('continuous-compliance-narrative', d);
