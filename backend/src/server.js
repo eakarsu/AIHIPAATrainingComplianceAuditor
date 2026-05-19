@@ -40,6 +40,7 @@ import sanctionRoutes from './routes/sanctions.js';
 import documentRoutes from './routes/documents.js';
 import accessControlRoutes from './routes/accessControl.js';
 import aiRoutes from './routes/ai.js';
+import customViewsRoutes from './routes/customViews.js';
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
@@ -255,6 +256,9 @@ app.use('/api/gap-no-ehr-system-integration', route_gap_no_ehr_system_integratio
 app.use('/api/gap-no-external-regulator-communication-work', route_gap_no_external_regulator_communication_work);
 app.use('/api/gap-no-webhook-surface-for-siem-integration', route_gap_no_webhook_surface_for_siem_integration);
 app.use('/api/gap-no-multi-tenant-covered-entity-isolation', route_gap_no_multi_tenant_covered_entity_isolation);
+
+// Custom Views (4 endpoints) — must be mounted BEFORE any 404 handler
+app.use('/api/custom-views', customViewsRoutes);
 
 app.listen(PORT, () => {
   console.log(`HIPAA Auditor Backend running on port ${PORT}`);

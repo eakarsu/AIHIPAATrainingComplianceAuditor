@@ -47,6 +47,7 @@ import GapNoEhrSystemIntegration from './pages/GapNoEhrSystemIntegration';
 import GapNoExternalRegulatorCommunicationWork from './pages/GapNoExternalRegulatorCommunicationWork';
 import GapNoWebhookSurfaceForSiemIntegration from './pages/GapNoWebhookSurfaceForSiemIntegration';
 import GapNoMultiTenantCoveredEntityIsolation from './pages/GapNoMultiTenantCoveredEntityIsolation';
+import CustomViewsPage from './pages/CustomViewsPage';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AUTH CONTEXT
@@ -166,6 +167,9 @@ const NAV_SECTIONS = [
     { label: 'Reminders', path: '/reminders', icon: AlertTriangle },
     { label: 'Quiz Analytics', path: '/quiz-analytics', icon: Activity },
     { label: 'AI History', path: '/ai-history', icon: FileText },
+  ]},
+  { label: 'Custom', items: [
+    { label: 'HIPAA Views', path: '/custom-views', icon: Activity },
   ]},
 ];
 
@@ -1658,6 +1662,7 @@ export default function App() {
           <Route path="/gap-no-external-regulator-communication-work" element={<GapNoExternalRegulatorCommunicationWork />} />
           <Route path="/gap-no-webhook-surface-for-siem-integration" element={<GapNoWebhookSurfaceForSiemIntegration />} />
           <Route path="/gap-no-multi-tenant-covered-entity-isolation" element={<GapNoMultiTenantCoveredEntityIsolation />} />
+          <Route path="/custom-views" element={<ProtectedRoute><AppLayout><CustomViewsPage /></AppLayout></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
