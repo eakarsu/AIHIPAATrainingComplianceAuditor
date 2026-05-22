@@ -48,6 +48,12 @@ import GapNoExternalRegulatorCommunicationWork from './pages/GapNoExternalRegula
 import GapNoWebhookSurfaceForSiemIntegration from './pages/GapNoWebhookSurfaceForSiemIntegration';
 import GapNoMultiTenantCoveredEntityIsolation from './pages/GapNoMultiTenantCoveredEntityIsolation';
 import CustomViewsPage from './pages/CustomViewsPage';
+import MinimumNecessaryTrainingDrift from './pages/MinimumNecessaryTrainingDrift';
+
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AUTH CONTEXT
@@ -170,6 +176,7 @@ const NAV_SECTIONS = [
   ]},
   { label: 'Custom', items: [
     { label: 'HIPAA Views', path: '/custom-views', icon: Activity },
+    { label: 'Training Drift', path: '/minimum-necessary-training-drift', icon: Activity },
   ]},
 ];
 
@@ -1618,6 +1625,10 @@ export default function App() {
         error: { iconTheme: { primary: '#f87171', secondary: '#0f172a' } },
       }} />
       <Routes>
+        <Route path="/insights/timeline" element={<ProtectedRoute><TimelineView /></ProtectedRoute>} />
+        <Route path="/codex/custom-viz" element={<ProtectedRoute><CodexCustomVizFeature /></ProtectedRoute>} />
+        <Route path="/codex/operations" element={<ProtectedRoute><CodexOperationsFeature /></ProtectedRoute>} />
+
         <Route path="/" element={<LoginPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
         {[
@@ -1663,6 +1674,7 @@ export default function App() {
           <Route path="/gap-no-webhook-surface-for-siem-integration" element={<GapNoWebhookSurfaceForSiemIntegration />} />
           <Route path="/gap-no-multi-tenant-covered-entity-isolation" element={<GapNoMultiTenantCoveredEntityIsolation />} />
           <Route path="/custom-views" element={<ProtectedRoute><AppLayout><CustomViewsPage /></AppLayout></ProtectedRoute>} />
+          <Route path="/minimum-necessary-training-drift" element={<ProtectedRoute><AppLayout><MinimumNecessaryTrainingDrift /></AppLayout></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

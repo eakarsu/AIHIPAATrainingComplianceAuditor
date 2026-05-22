@@ -41,6 +41,7 @@ import documentRoutes from './routes/documents.js';
 import accessControlRoutes from './routes/accessControl.js';
 import aiRoutes from './routes/ai.js';
 import customViewsRoutes from './routes/customViews.js';
+import minimumNecessaryTrainingDriftRoutes from './routes/minimumNecessaryTrainingDrift.js';
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
@@ -133,6 +134,7 @@ app.use('/api/sanctions', sanctionRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/access-control', accessControlRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/minimum-necessary-training-drift', minimumNecessaryTrainingDriftRoutes);
 import('./routes/breachSimulation.js').then(m => app.use('/api/breach-simulation', m.default));
 import('./routes/insiderAccessMonitor.js').then(m => app.use('/api/insider-access-monitor', m.default));
 

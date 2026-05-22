@@ -1,5 +1,5 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { authenticateToken } from '../middleware/auth.js';
 import { aiChat } from '../services/openrouter.js';
 import pool from '../db.js';
@@ -9,7 +9,7 @@ const router = express.Router();
 const aiRateLimiter = rateLimit({
   windowMs: 3600000,
   max: 20,
-  keyGenerator: (req) => req.user ? `user:${req.user.id}` : req.ip,
+  keyGenerator: (req, res) => req.user ? `user:${req.user.id}` : ipKeyGenerator(req, res),
   message: { error: 'AI rate limit reached. Please wait before making more requests.' },
   standardHeaders: true,
   legacyHeaders: false,
