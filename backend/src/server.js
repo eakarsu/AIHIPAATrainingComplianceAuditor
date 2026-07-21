@@ -1,14 +1,5 @@
 
 // === Batch 04 Gaps & Frontend Mounts ===
-import route_gap_limited_vendor_security_assessment_depth from '../routes/gap-limited-vendor-security-assessment-depth.js';
-import route_gap_no_breach_simulation_tabletop_endpoint from '../routes/gap-no-breach-simulation-tabletop-endpoint.js';
-import route_gap_no_insider_threat_behavior_baseline_drif from '../routes/gap-no-insider-threat-behavior-baseline-drif.js';
-import route_gap_no_user_facing_dashboard_backend_api from '../routes/gap-no-user-facing-dashboard-backend-api.js';
-import route_gap_no_real_time_phi_streaming_monitor from '../routes/gap-no-real-time-phi-streaming-monitor.js';
-import route_gap_no_ehr_system_integration from '../routes/gap-no-ehr-system-integration.js';
-import route_gap_no_external_regulator_communication_work from '../routes/gap-no-external-regulator-communication-work.js';
-import route_gap_no_webhook_surface_for_siem_integration from '../routes/gap-no-webhook-surface-for-siem-integration.js';
-import route_gap_no_multi_tenant_covered_entity_isolation from '../routes/gap-no-multi-tenant-covered-entity-isolation.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -42,6 +33,10 @@ import accessControlRoutes from './routes/accessControl.js';
 import aiRoutes from './routes/ai.js';
 import customViewsRoutes from './routes/customViews.js';
 import minimumNecessaryTrainingDriftRoutes from './routes/minimumNecessaryTrainingDrift.js';
+import governanceRouter from './governance/router.js';
+import governanceRuntime from './governance/runtime.cjs';
+
+governanceRuntime.validateRuntime();
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
@@ -71,51 +66,6 @@ app.use(rateLimit({
   message: { error: 'Too many requests' },
 }));
 
-// Ensure AI results table exists
-pool.query(`
-  CREATE TABLE IF NOT EXISTS ai_results_store (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER,
-    user_email TEXT,
-    tool_name TEXT NOT NULL,
-    input_snapshot JSONB,
-    result TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`).catch(err => console.error('ai_results_store init error:', err.message));
-
-// Ensure quiz_attempts table exists (Feature #5)
-pool.query(`
-  CREATE TABLE IF NOT EXISTS quiz_attempts (
-    id SERIAL PRIMARY KEY,
-    employee_id INTEGER,
-    course_id INTEGER,
-    question_text TEXT,
-    selected_answer TEXT,
-    correct_answer TEXT,
-    is_correct BOOLEAN DEFAULT false,
-    topic TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`).catch(err => console.error('quiz_attempts init error:', err.message));
-
-// Add due_date column to training_records if missing
-pool.query(`ALTER TABLE training_records ADD COLUMN IF NOT EXISTS due_date DATE`).catch(err => console.error('due_date column add error:', err.message));
-
-// Reminders table for the scheduler
-pool.query(`
-  CREATE TABLE IF NOT EXISTS reminders (
-    id SERIAL PRIMARY KEY,
-    type TEXT,
-    entity_type TEXT,
-    entity_id INTEGER,
-    message TEXT,
-    severity TEXT DEFAULT 'info',
-    acknowledged BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`).catch(err => console.error('reminders init error:', err.message));
-
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
@@ -135,6 +85,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/access-control', accessControlRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/minimum-necessary-training-drift', minimumNecessaryTrainingDriftRoutes);
+app.use('/api/governed-training', governanceRouter);
 import('./routes/breachSimulation.js').then(m => app.use('/api/breach-simulation', m.default));
 import('./routes/insiderAccessMonitor.js').then(m => app.use('/api/insider-access-monitor', m.default));
 
@@ -243,21 +194,13 @@ async function runReminderScan() {
   }
 }
 
-// Daily at 7:00am
-cron.schedule('0 7 * * *', runReminderScan);
-// Run once at startup (after a 10s delay so DB is up)
-setTimeout(runReminderScan, 10000);
+// Legacy reminder mutation is opt-in; normal service startup is non-destructive.
+if (process.env.ENABLE_LEGACY_SCHEDULERS === 'true') {
+  cron.schedule('0 7 * * *', runReminderScan);
+  setTimeout(runReminderScan, 10000);
+}
 
 
-app.use('/api/gap-limited-vendor-security-assessment-depth', route_gap_limited_vendor_security_assessment_depth);
-app.use('/api/gap-no-breach-simulation-tabletop-endpoint', route_gap_no_breach_simulation_tabletop_endpoint);
-app.use('/api/gap-no-insider-threat-behavior-baseline-drif', route_gap_no_insider_threat_behavior_baseline_drif);
-app.use('/api/gap-no-user-facing-dashboard-backend-api', route_gap_no_user_facing_dashboard_backend_api);
-app.use('/api/gap-no-real-time-phi-streaming-monitor', route_gap_no_real_time_phi_streaming_monitor);
-app.use('/api/gap-no-ehr-system-integration', route_gap_no_ehr_system_integration);
-app.use('/api/gap-no-external-regulator-communication-work', route_gap_no_external_regulator_communication_work);
-app.use('/api/gap-no-webhook-surface-for-siem-integration', route_gap_no_webhook_surface_for_siem_integration);
-app.use('/api/gap-no-multi-tenant-covered-entity-isolation', route_gap_no_multi_tenant_covered_entity_isolation);
 
 // Custom Views (4 endpoints) — must be mounted BEFORE any 404 handler
 app.use('/api/custom-views', customViewsRoutes);

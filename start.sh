@@ -1,143 +1,60 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# ══════════════════════════════════════════════════════════════════════════
-# HIPAA Training & Compliance Auditor - Start Script
-# ══════════════════════════════════════════════════════════════════════════
+project_dir="$(cd "$(dirname "$0")" && pwd)"
+backend_port="3001"
+frontend_port="3000"
+backend_pid=""
+frontend_pid=""
 
-set -e
-
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BACKEND_PORT=3001
-FRONTEND_PORT=3000
-
-echo "══════════════════════════════════════════════════════════════"
-echo "  HIPAA Training & Compliance Auditor"
-echo "  Starting application..."
-echo "══════════════════════════════════════════════════════════════"
-
-# ── Clean up used ports ─────────────────────────────────────────────────
-echo ""
-echo "[1/6] Cleaning up ports $BACKEND_PORT and $FRONTEND_PORT..."
-
-cleanup_port() {
-  local port=$1
-  local pids=$(lsof -ti :$port 2>/dev/null || true)
-  if [ -n "$pids" ]; then
-    echo "  Killing processes on port $port: $pids"
-    echo "$pids" | xargs kill -9 2>/dev/null || true
-    sleep 1
-  else
-    echo "  Port $port is free"
-  fi
-}
-
-cleanup_port $BACKEND_PORT
-cleanup_port $FRONTEND_PORT
-
-# ── Check for PostgreSQL ────────────────────────────────────────────────
-echo ""
-echo "[2/6] Checking PostgreSQL..."
-
-if ! command -v psql &> /dev/null; then
-  echo "  ERROR: PostgreSQL (psql) not found. Please install PostgreSQL."
+fail() {
+  echo "start.sh: $*" >&2
   exit 1
-fi
-
-# Check if PostgreSQL is running
-if ! pg_isready -q 2>/dev/null; then
-  echo "  PostgreSQL is not running. Attempting to start..."
-  if command -v brew &> /dev/null; then
-    brew services start postgresql@14 2>/dev/null || brew services start postgresql 2>/dev/null || true
-  fi
-  sleep 2
-  if ! pg_isready -q 2>/dev/null; then
-    echo "  ERROR: Could not start PostgreSQL. Please start it manually."
-    exit 1
-  fi
-fi
-echo "  PostgreSQL is running"
-
-# ── Create database if not exists ───────────────────────────────────────
-echo ""
-echo "[3/6] Setting up database..."
-
-DB_NAME="hipaa_auditor"
-DB_USER="${DB_USER:-postgres}"
-
-if psql -U "$DB_USER" -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
-  echo "  Database '$DB_NAME' already exists"
-else
-  echo "  Creating database '$DB_NAME'..."
-  createdb -U "$DB_USER" "$DB_NAME" 2>/dev/null || psql -U "$DB_USER" -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || true
-  echo "  Database created"
-fi
-
-# ── Install dependencies ────────────────────────────────────────────────
-echo ""
-echo "[4/6] Installing dependencies..."
-
-cd "$PROJECT_DIR/backend"
-if [ ! -d "node_modules" ]; then
-  echo "  Installing backend dependencies..."
-  npm install
-else
-  echo "  Backend dependencies already installed"
-fi
-
-cd "$PROJECT_DIR/frontend"
-if [ ! -d "node_modules" ]; then
-  echo "  Installing frontend dependencies..."
-  npm install
-else
-  echo "  Frontend dependencies already installed"
-fi
-
-# ── Seed database ───────────────────────────────────────────────────────
-echo ""
-echo "[5/6] Seeding database..."
-
-cd "$PROJECT_DIR/backend"
-node src/seed.js
-
-# ── Start application ──────────────────────────────────────────────────
-echo ""
-echo "[6/6] Starting application with hot reload..."
-echo ""
-
-# Trap to clean up background processes on exit
-cleanup() {
-  echo ""
-  echo "Shutting down..."
-  kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true
-  wait $BACKEND_PID $FRONTEND_PID 2>/dev/null || true
-  echo "Goodbye!"
-  exit 0
 }
-trap cleanup SIGINT SIGTERM EXIT
 
-# Start backend with nodemon for hot reload
-cd "$PROJECT_DIR/backend"
-npx nodemon src/server.js &
-BACKEND_PID=$!
+[ -f "$project_dir/.env" ] || fail "copy .env.example to .env and supply local secrets"
+jwt_secret="$(sed -n 's/^JWT_SECRET=//p' "$project_dir/.env" | tail -n 1)"
+[ "${#jwt_secret}" -ge 32 ] || fail "JWT_SECRET in .env must contain at least 32 characters"
+[ -d "$project_dir/backend/node_modules" ] || fail "backend dependencies are absent; run the documented npm ci step explicitly"
+[ -d "$project_dir/frontend/node_modules" ] || fail "frontend dependencies are absent; run the documented npm ci step explicitly"
 
-# Start frontend with Vite (hot reload built-in)
-cd "$PROJECT_DIR/frontend"
-npx vite --host &
-FRONTEND_PID=$!
+check_port() {
+  local port="$1"
+  if command -v lsof >/dev/null 2>&1 && lsof -ti ":${port}" >/dev/null 2>&1; then
+    fail "port ${port} is already owned by another process; stop it explicitly or configure another port"
+  fi
+}
 
-echo ""
-echo "══════════════════════════════════════════════════════════════"
-echo "  Application is running!"
-echo ""
-echo "  Frontend:  http://localhost:$FRONTEND_PORT"
-echo "  Backend:   http://localhost:$BACKEND_PORT"
-echo ""
-echo "  Login Credentials:"
-echo "    Admin: admin@hipaa-auditor.com / admin123"
-echo "    User:  user@hipaa-auditor.com / user123"
-echo ""
-echo "  Press Ctrl+C to stop"
-echo "══════════════════════════════════════════════════════════════"
+cleanup() {
+  trap - EXIT
+  [ -z "$frontend_pid" ] || kill "$frontend_pid" 2>/dev/null || true
+  [ -z "$backend_pid" ] || kill "$backend_pid" 2>/dev/null || true
+  [ -z "$frontend_pid" ] || wait "$frontend_pid" 2>/dev/null || true
+  [ -z "$backend_pid" ] || wait "$backend_pid" 2>/dev/null || true
+}
 
-# Wait for both processes
-wait $BACKEND_PID $FRONTEND_PID
+shutdown() {
+  cleanup
+  exit 130
+}
+
+trap cleanup EXIT
+trap shutdown INT TERM
+check_port "$backend_port"
+check_port "$frontend_port"
+
+(
+  cd "$project_dir/backend"
+  node src/server.js
+) &
+backend_pid="$!"
+
+(
+  cd "$project_dir/frontend"
+  npm run dev -- --host 127.0.0.1 --port "$frontend_port"
+) &
+frontend_pid="$!"
+
+echo "Backend child $backend_pid; frontend child $frontend_pid."
+echo "No dependency install, database creation, migration, seed, system-service start, or port-owner termination was performed."
+wait "$backend_pid" "$frontend_pid"

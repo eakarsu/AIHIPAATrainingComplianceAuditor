@@ -327,16 +327,6 @@ function LoginPage() {
     } finally { setLoading(false); }
   }
 
-  function autoFillAdmin() {
-    setEmail('admin@hipaa-auditor.com');
-    setPassword('admin123');
-  }
-
-  function autoFillUser() {
-    setEmail('user@hipaa-auditor.com');
-    setPassword('user123');
-  }
-
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-sm animate-fade-in">
@@ -369,22 +359,9 @@ function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-4 space-y-2">
-            <p className="text-xs text-slate-500 text-center">Quick Login</p>
-            <div className="flex gap-2">
-              <button onClick={autoFillAdmin}
-                className="flex-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/40 text-emerald-400 text-xs font-medium py-2 rounded-lg transition-colors">
-                Admin Account
-              </button>
-              <button onClick={autoFillUser}
-                className="flex-1 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-600/40 text-violet-400 text-xs font-medium py-2 rounded-lg transition-colors">
-                User Account
-              </button>
-            </div>
-          </div>
         </div>
 
-        <p className="text-center text-xs text-slate-600 mt-6">Protected by HIPAA-compliant infrastructure</p>
+        <p className="text-center text-xs text-slate-600 mt-6">Administrative training workspace</p>
       </div>
     </div>
   );
