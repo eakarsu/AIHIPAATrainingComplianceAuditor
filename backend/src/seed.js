@@ -19,6 +19,12 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
+function requireDemoPassword() {
+  const password = process.env.DEMO_PASSWORD || process.env.SEED_DEMO_PASSWORD || process.env.DEMO_SEED_PASSWORD || '';
+  if (password.length < 12 || password.length > 1024) throw new Error('DEMO_PASSWORD must contain 12-1024 characters');
+  return password;
+}
+
 async function seed() {
   if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEMO_SEED !== 'true') {
     throw new Error('Destructive demo seed refused. Set ALLOW_DEMO_SEED=true outside production.');
@@ -271,8 +277,8 @@ async function seed() {
     console.log('Created all tables.');
 
     // Seed users
-    const adminHash = await bcrypt.hash('admin123', 10);
-    const userHash = await bcrypt.hash('user123', 10);
+    const adminHash = await bcrypt.hash(requireDemoPassword(), 10);
+    const userHash = await bcrypt.hash(requireDemoPassword(), 10);
     await client.query(`
       INSERT INTO users (email, password_hash, full_name, role) VALUES
       ('admin@hipaa-auditor.com', '${adminHash}', 'Admin User', 'admin'),
