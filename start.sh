@@ -2,8 +2,6 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "$0")" && pwd)"
-backend_port="3001"
-frontend_port="3000"
 backend_pid=""
 frontend_pid=""
 
@@ -13,7 +11,13 @@ fail() {
 }
 
 [ -f "$project_dir/.env" ] || fail "copy .env.example to .env and supply local secrets"
-jwt_secret="$(sed -n 's/^JWT_SECRET=//p' "$project_dir/.env" | tail -n 1)"
+set -a
+# shellcheck disable=SC1091
+source "$project_dir/.env"
+set +a
+backend_port="${BACKEND_PORT:-3001}"
+frontend_port="${FRONTEND_PORT:-3000}"
+jwt_secret="${JWT_SECRET:-}"
 [ "${#jwt_secret}" -ge 32 ] || fail "JWT_SECRET in .env must contain at least 32 characters"
 [ -d "$project_dir/backend/node_modules" ] || fail "backend dependencies are absent; run the documented npm ci step explicitly"
 [ -d "$project_dir/frontend/node_modules" ] || fail "frontend dependencies are absent; run the documented npm ci step explicitly"
@@ -42,16 +46,21 @@ trap cleanup EXIT
 trap shutdown INT TERM
 check_port "$backend_port"
 check_port "$frontend_port"
+[ "$backend_port" != "$frontend_port" ] || fail "backend and frontend ports must differ"
+
+if [ "${MIGRATE_ON_START:-false}" = "true" ]; then
+  node "$project_dir/backend/src/scripts/runtime-init.js"
+fi
 
 (
   cd "$project_dir/backend"
-  node src/server.js
+  BACKEND_PORT="$backend_port" node src/server.js
 ) &
 backend_pid="$!"
 
 (
   cd "$project_dir/frontend"
-  npm run dev -- --host 127.0.0.1 --port "$frontend_port"
+  npm run dev -- --host 127.0.0.1 --port "$frontend_port" --strictPort
 ) &
 frontend_pid="$!"
 
