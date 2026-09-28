@@ -40,6 +40,11 @@ async function seed() {
       DROP TABLE IF EXISTS sanctions CASCADE;
       DROP TABLE IF EXISTS compliance_deadlines CASCADE;
       DROP TABLE IF EXISTS audit_logs CASCADE;
+      DROP TABLE IF EXISTS reminders CASCADE;
+      DROP TABLE IF EXISTS quiz_attempts CASCADE;
+      DROP TABLE IF EXISTS ai_results_store CASCADE;
+      DROP TABLE IF EXISTS feature_tool_runs CASCADE;
+      DROP TABLE IF EXISTS operations_tasks CASCADE;
       DROP TABLE IF EXISTS risk_register CASCADE;
       DROP TABLE IF EXISTS phi_inventory CASCADE;
       DROP TABLE IF EXISTS business_associate_agreements CASCADE;
@@ -212,6 +217,60 @@ async function seed() {
         user_email VARCHAR,
         details TEXT,
         ip_address VARCHAR,
+        severity VARCHAR(20) NOT NULL DEFAULT 'info',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE reminders (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(80) NOT NULL,
+        entity_type VARCHAR(80),
+        entity_id INT,
+        message TEXT NOT NULL,
+        severity VARCHAR(20) NOT NULL DEFAULT 'medium',
+        acknowledged BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE quiz_attempts (
+        id SERIAL PRIMARY KEY,
+        employee_id INT,
+        course_id INT,
+        question_text TEXT,
+        selected_answer TEXT,
+        correct_answer TEXT,
+        is_correct BOOLEAN,
+        topic VARCHAR(160),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE ai_results_store (
+        id SERIAL PRIMARY KEY,
+        user_id INT,
+        user_email VARCHAR,
+        tool_name VARCHAR NOT NULL,
+        input_snapshot JSONB,
+        result TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE feature_tool_runs (
+        id SERIAL PRIMARY KEY,
+        slug VARCHAR(160) NOT NULL,
+        user_id INT,
+        user_email VARCHAR,
+        input TEXT,
+        context JSONB NOT NULL DEFAULT '{}'::jsonb,
+        result TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE operations_tasks (
+        id SERIAL PRIMARY KEY,
+        task VARCHAR(500) NOT NULL,
+        owner VARCHAR(80) NOT NULL DEFAULT 'User',
+        priority VARCHAR(20) DEFAULT 'Medium',
+        status VARCHAR(20) DEFAULT 'Queued',
         created_at TIMESTAMP DEFAULT NOW()
       );
 

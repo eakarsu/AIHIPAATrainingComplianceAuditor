@@ -62,17 +62,23 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // POST create audit log entry
 router.post('/', authenticateToken, async (req, res) => {
-  const { action, entity_type, entity_id, user_email, details, ip_address } = req.body;
+  const { action, entity_type, entity_id, user_email, details, ip_address, severity } = req.body;
 
   if (!action || !entity_type) {
     return res.status(400).json({ error: 'action and entity_type are required.' });
   }
 
+  const allowedSeverities = ['info', 'low', 'medium', 'high', 'critical'];
+  const severityValue = severity === undefined ? 'info' : String(severity);
+  if (!allowedSeverities.includes(severityValue)) {
+    return res.status(400).json({ error: `severity must be one of: ${allowedSeverities.join(', ')}.` });
+  }
+
   try {
     const result = await pool.query(
       `INSERT INTO audit_logs
-        (action, entity_type, entity_id, user_email, details, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6)
+        (action, entity_type, entity_id, user_email, details, ip_address, severity)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         action,
@@ -81,6 +87,7 @@ router.post('/', authenticateToken, async (req, res) => {
         user_email || null,
         details || null,
         ip_address || null,
+        severityValue,
       ]
     );
     res.status(201).json(result.rows[0]);

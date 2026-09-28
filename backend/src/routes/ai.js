@@ -2,6 +2,7 @@ import express from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { authenticateToken } from '../middleware/auth.js';
 import { aiChat } from '../services/openrouter.js';
+import { runReminderScan } from '../services/reminderScan.js';
 import pool from '../db.js';
 
 const router = express.Router();
@@ -963,15 +964,13 @@ router.get('/quiz-analytics', authenticateToken, async (req, res) => {
 /* Reminder backfill job - exposed as endpoint for manual trigger */
 router.post('/run-reminder-job', authenticateToken, async (req, res) => {
   try {
-    const [overdueDeadlines, expiringCerts, expiringBAAs] = await Promise.all([
-      pool.query(`SELECT COUNT(*)::int AS cnt FROM compliance_deadlines WHERE due_date < NOW() AND status != 'completed'`).catch(() => ({ rows: [{ cnt: 0 }] })),
-      pool.query(`SELECT COUNT(*)::int AS cnt FROM employees WHERE certification_date IS NOT NULL AND certification_date + INTERVAL '11 months' <= CURRENT_DATE`).catch(() => ({ rows: [{ cnt: 0 }] })),
-      pool.query(`SELECT COUNT(*)::int AS cnt FROM business_associate_agreements WHERE expiration_date <= CURRENT_DATE + 30`).catch(() => ({ rows: [{ cnt: 0 }] })),
-    ]);
+    const summary = await runReminderScan();
     res.json({
-      overdue_deadlines: overdueDeadlines.rows[0].cnt,
-      expiring_certifications: expiringCerts.rows[0].cnt,
-      expiring_baas: expiringBAAs.rows[0].cnt,
+      overdue_deadlines: summary.overdue_deadlines,
+      expiring_certifications: summary.expiring_certifications,
+      expiring_baas: summary.expiring_baas,
+      reminders_created: summary.reminders_created,
+      errors: summary.errors,
       ran_at: new Date().toISOString(),
     });
   } catch (err) {

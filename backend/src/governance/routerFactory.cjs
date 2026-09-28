@@ -158,7 +158,7 @@ function createGovernedRouter({ express, workflow, auth, db }) {
         `INSERT INTO governed_evidence
           (id, tenant_id, case_id, idempotency_key, kind, source_ref, source_version,
            sha256, captured_at, consent_basis, metadata, created_by)
-         SELECT $1,$2,c.id,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12
+         SELECT $1::uuid,$2::varchar,c.id,$4::varchar,$5::varchar,$6::varchar,$7::varchar,$8::varchar,$9::timestamptz,$10::varchar,$11::jsonb,$12::varchar
          FROM governed_cases c
          WHERE c.id=$3 AND c.tenant_id=$2 AND ($13='*' OR c.subject_ref LIKE $13 || '%')
          ON CONFLICT DO NOTHING RETURNING *`,
@@ -206,8 +206,8 @@ function createGovernedRouter({ express, workflow, auth, db }) {
         `INSERT INTO governed_events
           (id, tenant_id, case_id, idempotency_key, event_type, action, from_state,
            to_state, reason, actor_id, actor_role, details)
-         SELECT $1,$2,c.id,$4,'assessment','assess',c.state,c.state,
-                'Deterministic triage; no final decision',$5,$6,$7::jsonb
+         SELECT $1::uuid,$2::varchar,c.id,$4::varchar,'assessment','assess',c.state,c.state,
+                'Deterministic triage; no final decision',$5::varchar,$6::varchar,$7::jsonb
          FROM governed_cases c
          WHERE c.id=$3 AND c.tenant_id=$2 AND ($8='*' OR c.subject_ref LIKE $8 || '%')
          ON CONFLICT (tenant_id, idempotency_key) DO NOTHING

@@ -25,9 +25,12 @@ try {
       entity_type VARCHAR,
       entity_id INTEGER,
       user_email VARCHAR,
-      details JSONB,
+      details TEXT,
+      ip_address VARCHAR,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    ALTER TABLE audit_logs
+      ADD COLUMN IF NOT EXISTS severity VARCHAR(20) NOT NULL DEFAULT 'info';
     CREATE TABLE IF NOT EXISTS ai_results_store (
       id SERIAL PRIMARY KEY,
       user_id INTEGER,

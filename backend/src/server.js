@@ -33,8 +33,14 @@ import accessControlRoutes from './routes/accessControl.js';
 import aiRoutes from './routes/ai.js';
 import customViewsRoutes from './routes/customViews.js';
 import minimumNecessaryTrainingDriftRoutes from './routes/minimumNecessaryTrainingDrift.js';
+import breachSimulationRoutes from './routes/breachSimulation.js';
+import insiderAccessMonitorRoutes from './routes/insiderAccessMonitor.js';
+import featureToolsRoutes from './routes/featureTools.js';
+import operationsTasksRoutes from './routes/operationsTasks.js';
+import insightsRoutes from './routes/insights.js';
 import governanceRouter from './governance/router.js';
 import governanceRuntime from './governance/runtime.cjs';
+import { runReminderScan } from './services/reminderScan.js';
 
 governanceRuntime.validateRuntime();
 
@@ -86,8 +92,11 @@ app.use('/api/access-control', accessControlRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/minimum-necessary-training-drift', minimumNecessaryTrainingDriftRoutes);
 app.use('/api/governed-training', governanceRouter);
-import('./routes/breachSimulation.js').then(m => app.use('/api/breach-simulation', m.default));
-import('./routes/insiderAccessMonitor.js').then(m => app.use('/api/insider-access-monitor', m.default));
+app.use('/api/breach-simulation', breachSimulationRoutes);
+app.use('/api/insider-access-monitor', insiderAccessMonitorRoutes);
+app.use('/api', featureToolsRoutes);
+app.use('/api/operations-tasks', operationsTasksRoutes);
+app.use('/api/insights', insightsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -146,49 +155,11 @@ app.post('/api/reminders/:id/acknowledge', async (req, res) => {
 });
 
 // Background scheduler — daily at 7am: scan for due deadlines, expiring certs, expiring BAAs
-async function runReminderScan() {
+async function runScheduledReminderScan() {
   try {
-    // Overdue compliance deadlines
-    const overdue = await pool.query(
-      `SELECT id, title FROM compliance_deadlines WHERE due_date < NOW() AND status != 'completed' LIMIT 50`
-    ).catch(() => ({ rows: [] }));
-    for (const r of overdue.rows) {
-      await pool.query(
-        `INSERT INTO reminders (type, entity_type, entity_id, message, severity)
-         SELECT 'overdue_deadline', 'compliance_deadlines', $1, $2, 'high'
-         WHERE NOT EXISTS (SELECT 1 FROM reminders WHERE entity_type='compliance_deadlines' AND entity_id=$1 AND acknowledged=false)`,
-        [r.id, `Overdue deadline: ${r.title}`]
-      ).catch(() => {});
-    }
-    // Expiring certifications (within 30 days of 1-year mark)
-    const expiringCerts = await pool.query(
-      `SELECT id, first_name, last_name FROM employees
-       WHERE certification_date IS NOT NULL
-         AND certification_date + INTERVAL '11 months' <= CURRENT_DATE
-         AND certification_date + INTERVAL '12 months' > CURRENT_DATE LIMIT 100`
-    ).catch(() => ({ rows: [] }));
-    for (const r of expiringCerts.rows) {
-      await pool.query(
-        `INSERT INTO reminders (type, entity_type, entity_id, message, severity)
-         SELECT 'cert_expiring', 'employees', $1, $2, 'medium'
-         WHERE NOT EXISTS (SELECT 1 FROM reminders WHERE entity_type='employees' AND entity_id=$1 AND type='cert_expiring' AND acknowledged=false)`,
-        [r.id, `HIPAA certification expiring soon: ${r.first_name} ${r.last_name}`]
-      ).catch(() => {});
-    }
-    // Expiring BAAs (90 days)
-    const expiringBAAs = await pool.query(
-      `SELECT id, associate_name FROM business_associate_agreements
-       WHERE expiration_date <= CURRENT_DATE + 90 AND expiration_date >= CURRENT_DATE LIMIT 50`
-    ).catch(() => ({ rows: [] }));
-    for (const r of expiringBAAs.rows) {
-      await pool.query(
-        `INSERT INTO reminders (type, entity_type, entity_id, message, severity)
-         SELECT 'baa_expiring', 'business_associate_agreements', $1, $2, 'high'
-         WHERE NOT EXISTS (SELECT 1 FROM reminders WHERE entity_type='business_associate_agreements' AND entity_id=$1 AND type='baa_expiring' AND acknowledged=false)`,
-        [r.id, `BAA expiring within 90 days: ${r.associate_name}`]
-      ).catch(() => {});
-    }
-    console.log(`[scheduler] reminder scan complete: ${overdue.rows.length} overdue + ${expiringCerts.rows.length} certs + ${expiringBAAs.rows.length} BAAs`);
+    const s = await runReminderScan();
+    console.log(`[scheduler] reminder scan complete: ${s.overdue_deadlines} overdue + ${s.expiring_certifications} certs + ${s.expiring_baas} BAAs (${s.reminders_created} created)`);
+    for (const e of s.errors) console.error(`[scheduler] ${e}`);
   } catch (err) {
     console.error('[scheduler] error:', err.message);
   }
@@ -196,8 +167,8 @@ async function runReminderScan() {
 
 // Legacy reminder mutation is opt-in; normal service startup is non-destructive.
 if (process.env.ENABLE_LEGACY_SCHEDULERS === 'true') {
-  cron.schedule('0 7 * * *', runReminderScan);
-  setTimeout(runReminderScan, 10000);
+  cron.schedule('0 7 * * *', runScheduledReminderScan);
+  setTimeout(runScheduledReminderScan, 10000);
 }
 
 

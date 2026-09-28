@@ -1,15 +1,32 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-const initialItems = [
-  { id: 1, owner: 'Ops', priority: 'High', status: 'Ready', task: 'Review exception queue' },
-  { id: 2, owner: 'AI', priority: 'Medium', status: 'In progress', task: 'Draft recommended next actions' },
-  { id: 3, owner: 'Compliance', priority: 'Low', status: 'Queued', task: 'Attach audit evidence' },
-];
+const STATUSES = ['Queued', 'Ready', 'In progress', 'Done'];
+
+function authHeaders() {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export default function CodexOperationsFeature() {
   const [query, setQuery] = useState('');
-  const [items, setItems] = useState(initialItems);
+  const [items, setItems] = useState([]);
   const [task, setTask] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/operations-tasks', { headers: authHeaders() })
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'Failed to load tasks');
+        setItems(data);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -17,14 +34,39 @@ export default function CodexOperationsFeature() {
     return items.filter((item) => Object.values(item).join(' ').toLowerCase().includes(normalized));
   }, [items, query]);
 
-  function addTask(event) {
+  async function addTask(event) {
     event.preventDefault();
     if (!task.trim()) return;
-    setItems((current) => [
-      { id: Date.now(), owner: 'User', priority: 'Medium', status: 'Queued', task: task.trim() },
-      ...current,
-    ]);
-    setTask('');
+    try {
+      const res = await fetch('/api/operations-tasks', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ task: task.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to add task');
+      setItems((current) => [data, ...current]);
+      setTask('');
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function advanceStatus(item) {
+    const next = STATUSES[(STATUSES.indexOf(item.status) + 1) % STATUSES.length];
+    try {
+      const res = await fetch(`/api/operations-tasks/${item.id}/status`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({ status: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update task');
+      setItems((current) => current.map((i) => (i.id === item.id ? data : i)));
+    } catch (e) {
+      setError(e.message);
+    }
   }
 
   return (
@@ -39,16 +81,21 @@ export default function CodexOperationsFeature() {
 
       <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search owner, priority, status, or task" style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: 8, marginBottom: 16 }} />
 
+      {error && <div style={{ background: '#fee', color: '#900', padding: '0.75rem', borderRadius: 6, marginBottom: 12 }}>{error}</div>}
+
       <div style={{ border: '1px solid #d7dde8', borderRadius: 8, overflow: 'hidden', background: '#ffffff' }}>
         {filtered.map((item) => (
-          <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px', gap: 12, padding: 14, borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
+          <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 140px', gap: 12, padding: 14, borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
             <strong>{item.task}</strong>
             <span>{item.owner}</span>
             <span>{item.priority}</span>
-            <span>{item.status}</span>
+            <button onClick={() => advanceStatus(item)} title="Click to advance status" style={{ padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, background: '#f8fafc', cursor: 'pointer', fontWeight: 600 }}>
+              {item.status} →
+            </button>
           </div>
         ))}
-        {filtered.length === 0 && <div style={{ padding: 18, color: '#64748b' }}>No matching workflow items.</div>}
+        {!loading && filtered.length === 0 && <div style={{ padding: 18, color: '#64748b' }}>No matching workflow items.</div>}
+        {loading && <div style={{ padding: 18, color: '#64748b' }}>Loading…</div>}
       </div>
     </section>
   );

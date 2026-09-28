@@ -49,6 +49,7 @@ import GapNoWebhookSurfaceForSiemIntegration from './pages/GapNoWebhookSurfaceFo
 import GapNoMultiTenantCoveredEntityIsolation from './pages/GapNoMultiTenantCoveredEntityIsolation';
 import CustomViewsPage from './pages/CustomViewsPage';
 import MinimumNecessaryTrainingDrift from './pages/MinimumNecessaryTrainingDrift';
+import GovernedTrainingPage from './pages/GovernedTrainingPage';
 
 import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
 import CodexOperationsFeature from './pages/CodexOperationsFeature';
@@ -169,6 +170,7 @@ const NAV_SECTIONS = [
     { label: 'Breach Tabletop Simulation', path: '/ai/breach-simulation', icon: Sparkles },
   ]},
   { label: 'Operations', items: [
+    { label: 'Governed Training', path: '/governed-training', icon: ClipboardCheck },
     { label: 'BAA Renewals', path: '/baa-renewals', icon: Calendar },
     { label: 'Reminders', path: '/reminders', icon: AlertTriangle },
     { label: 'Quiz Analytics', path: '/quiz-analytics', icon: Activity },
@@ -345,12 +347,12 @@ function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">Email address</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" autoComplete="email"
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" autoComplete="email" required
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password"
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" required
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent" />
             </div>
             <button
@@ -364,7 +366,7 @@ function LoginPage() {
             </button>
             <button type="submit" disabled={loading}
               className="w-full bg-sky-600 hover:bg-sky-500 disabled:bg-sky-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg text-sm transition-colors shadow-md shadow-sky-900/40">
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
@@ -1660,6 +1662,7 @@ export default function App() {
           <Route path="/gap-no-webhook-surface-for-siem-integration" element={<GapNoWebhookSurfaceForSiemIntegration />} />
           <Route path="/gap-no-multi-tenant-covered-entity-isolation" element={<GapNoMultiTenantCoveredEntityIsolation />} />
           <Route path="/custom-views" element={<ProtectedRoute><AppLayout><CustomViewsPage /></AppLayout></ProtectedRoute>} />
+          <Route path="/governed-training" element={<ProtectedRoute><AppLayout><GovernedTrainingPage /></AppLayout></ProtectedRoute>} />
           <Route path="/minimum-necessary-training-drift" element={<ProtectedRoute><AppLayout><MinimumNecessaryTrainingDrift /></AppLayout></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
